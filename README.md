@@ -1,0 +1,435 @@
+# 🧠 StudyBuddy
+
+**AI-powered flashcard generation with spaced repetition learning**
+
+StudyBuddy extracts content from PDF documents (text, images, formulas, tables) using PyMuPDF, generates flashcards via Google Gemini AI, and helps you learn through an SM-2 spaced repetition algorithm.
+
+---
+
+## 📋 Table of Contents
+
+- [Features](#features)
+- [Tech Stack](#tech-stack)
+- [Project Structure](#project-structure)
+- [Prerequisites](#prerequisites)
+- [Getting Started](#getting-started)
+- [Environment Variables](#environment-variables)
+- [Starting the Application](#starting-the-application)
+- [API Endpoints](#api-endpoints)
+- [Database Schema](#database-schema)
+- [How It Works](#how-it-works)
+- [Troubleshooting](#troubleshooting)
+
+---
+
+## ✨ Features
+
+- **PDF Upload & Extraction** — Extracts text, images, formulas (LaTeX), tables, and headings from any PDF using PyMuPDF
+- **AI Flashcard Generation** — Sends extracted content to Gemini AI with a detailed prompt to generate high-quality Q&A flashcards
+- **Image Support** — Embeds extracted images (diagrams, graphs, charts) directly into flashcards
+- **Formula Rendering** — LaTeX formulas rendered with KaTeX in the browser
+- **Spaced Repetition (SM-2)** — Adapts review intervals based on your performance (Again/Hard/Good/Easy)
+- **"Again" Cards** — Cards you didn't know get re-shown after 10 minutes with a countdown timer
+- **Dashboard** — Overview of total cards, due cards, mastery, study streak, and decks
+- **Dark/Light Mode** — Toggle between themes
+- **Keyboard Shortcuts** — Space/Enter to reveal, 1-4 to rate during review
+- **Batch Processing** — Large PDFs (50+ pages) are automatically split into 25-page batches
+
+---
+
+## 🛠 Tech Stack
+
+### Backend
+
+| Component | Technology |
+|-----------|-----------|
+| Framework | FastAPI (Python 3.11+) |
+| Database | SQLite via SQLAlchemy ORM |
+| PDF Extraction | PyMuPDF (fitz) + Pillow |
+| AI Provider | Google Gemini API (REST) |
+| Validation | Pydantic v2 |
+| Server | Uvicorn with auto-reload |
+
+### Frontend
+
+| Component | Technology |
+|-----------|-----------|
+| Framework | Next.js 14 (App Router) |
+| Language | TypeScript |
+| Styling | Tailwind CSS |
+| Formula Rendering | KaTeX |
+| Icons | Lucide React |
+
+---
+
+## 📁 Project Structure
+
+```
+StudyBuddy/
+├── backend/
+│   ├── main.py              # FastAPI app, middleware, CORS, lifespan
+│   ├── database.py          # SQLAlchemy engine, session, auto-migration
+│   ├── models.py            # ORM models: Deck, Flashcard, ReviewHistory
+│   ├── schemas.py           # Pydantic request/response schemas
+│   ├── gemini_client.py     # Gemini API calls, prompt, model fallback
+│   ├── pdf_extractor.py     # PDF parsing: text, images, formulas, tables
+│   ├── json_fix.py          # Fix malformed JSON from Gemini (LaTeX backslashes)
+│   ├── requirements.txt     # Python dependencies
+│   ├── .env                 # Environment variables (not committed)
+│   ├── .env.example         # Template for .env
+│   ├── studybuddy.db        # SQLite database (auto-created)
+│   └── routers/
+│       ├── __init__.py
+│       ├── decks.py         # CRUD for decks
+│       ├── cards.py         # List/get/delete cards in a deck
+│       ├── generate.py      # Upload PDF/text → generate flashcards
+│       ├── review.py        # SM-2 review session + rating submission
+│       └── stats.py         # Dashboard statistics
+│
+├── frontend/
+│   ├── package.json
+│   ├── next.config.js       # API proxy: /api/* → localhost:8000
+│   ├── tailwind.config.js
+│   ├── postcss.config.js
+│   ├── tsconfig.json
+│   └── src/
+│       ├── app/
+│       │   ├── layout.tsx       # Root layout, nav bar, theme provider
+│       │   ├── globals.css      # Tailwind + custom component classes
+│       │   ├── page.tsx         # Dashboard page
+│       │   ├── generate/
+│       │   │   └── page.tsx     # Upload PDF or paste text → generate
+│       │   ├── decks/
+│       │   │   ├── page.tsx     # List all decks
+│       │   │   └── [id]/
+│       │   │       └── page.tsx # Deck detail: list cards, expand Q&A
+│       │   └── review/
+│       │       └── [id]/
+│       │           └── page.tsx # Review session with SM-2 rating
+│       └── lib/
+│           ├── api.ts           # API client functions
+│           ├── types.ts         # TypeScript interfaces
+│           ├── ThemeContext.tsx  # Dark/light mode context
+│           ├── Formula.tsx      # KaTeX formula renderer
+│           ├── FormattedText.tsx # Markdown-like text renderer
+│           └── ImageLightbox.tsx # Fullscreen image viewer
+│
+├── .gitignore
+└── README.md
+```
+
+---
+
+## ✅ Prerequisites
+
+- **Python 3.11+** — [python.org](https://python.org)
+- **Node.js 18+** — [nodejs.org](https://nodejs.org)
+- **Google Gemini API Key** — [Get one here](https://aistudio.google.com/apikey)
+
+---
+
+## 🚀 Getting Started
+
+### 1. Clone the repository
+
+```bash
+git clone <repository-url>
+cd StudyBuddy
+```
+
+### 2. Backend Setup
+
+```bash
+cd backend
+
+# Create virtual environment
+python -m venv venv
+
+# Activate it
+# Windows:
+venv\Scripts\activate
+# macOS/Linux:
+source venv/bin/activate
+
+# Install dependencies
+pip install -r requirements.txt
+
+# Create your .env file
+cp .env.example .env
+```
+
+Edit `backend/.env` and add your Gemini API key:
+
+```
+GEMINI_API_KEY=your_api_key_here
+DATABASE_URL=sqlite:///./studybuddy.db
+```
+
+### 3. Frontend Setup
+
+```bash
+cd frontend
+
+# Install dependencies
+npm install
+```
+
+### 4. Start the Application
+
+Open **two terminals** — one for backend, one for frontend.
+
+#### Terminal 1 — Backend (port 8000)
+
+```bash
+cd backend
+venv\Scripts\activate    # if not already active
+python main.py
+```
+
+Or with uvicorn directly:
+
+```bash
+cd backend
+uvicorn main:app --host 0.0.0.0 --port 8000 --reload --timeout-keep-alive 300
+```
+
+The backend starts at `http://localhost:8000`. You'll see:
+
+```
+INFO:     Started server process
+INFO:     Waiting for application startup.
+INFO:     Application startup complete.
+```
+
+#### Terminal 2 — Frontend (port 3000)
+
+```bash
+cd frontend
+npm run dev
+```
+
+The frontend starts at `http://localhost:3000`.
+
+### 5. Open the App
+
+Navigate to **http://localhost:3000** in your browser.
+
+---
+
+## 🔑 Environment Variables
+
+### Backend (`backend/.env`)
+
+| Variable | Required | Default | Description |
+|----------|----------|---------|-------------|
+| `GEMINI_API_KEY` | **Yes** | — | Google Gemini API key |
+| `DATABASE_URL` | No | `sqlite:///./studybuddy.db` | Database connection string |
+
+### Frontend
+
+The frontend has **no required environment variables**. API requests are proxied to the backend via `next.config.js` rewrites (`/api/*` → `localhost:8000/api/*`).
+
+> **Note:** The generate endpoint sends requests directly to `http://localhost:8000/api/generate/` (bypassing Next.js) because file uploads can be large and may time out through the proxy.
+
+---
+
+## 📡 API Endpoints
+
+### Health Check
+
+```
+GET /api/health
+```
+
+### Stats
+
+```
+GET /api/stats/
+```
+
+Returns dashboard stats: total cards, due today, mastered, reviews today, streak, all decks.
+
+### Decks
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| `GET` | `/api/decks/` | List all decks |
+| `GET` | `/api/decks/{id}` | Get deck by ID |
+| `POST` | `/api/decks/` | Create deck `{name, description}` |
+| `PUT` | `/api/decks/{id}` | Update deck |
+| `DELETE` | `/api/decks/{id}` | Delete deck and all its cards |
+
+### Cards
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| `GET` | `/api/decks/{id}/cards/` | List cards in deck |
+| `GET` | `/api/decks/{id}/cards/{card_id}` | Get single card |
+| `DELETE` | `/api/decks/{id}/cards/{card_id}` | Delete card |
+
+### Generate
+
+```
+POST /api/generate/
+Content-Type: multipart/form-data
+```
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `file` | File | PDF, TXT, or DOCX file upload |
+| `text_content` | String | Or paste text directly |
+| `deck_name` | String | Optional: name for new deck |
+| `deck_id` | Number | Optional: add cards to existing deck |
+
+Returns: `{ deck_id, cards_generated, cards: [...] }`
+
+### Review
+
+```
+GET  /api/decks/{id}/review/session    → Returns due cards
+POST /api/decks/{id}/review/{card_id}  → Submit rating
+```
+
+Rating field (form data): `rating` = `again` | `hard` | `good` | `easy`
+
+---
+
+## 🗄 Database Schema
+
+### `decks`
+
+| Column | Type | Description |
+|--------|------|-------------|
+| `id` | INTEGER PK | Auto-increment ID |
+| `name` | VARCHAR(200) | Deck name |
+| `description` | TEXT | Deck description |
+| `created_at` | DATETIME | UTC creation time |
+| `updated_at` | DATETIME | UTC last update time |
+
+### `flashcards`
+
+| Column | Type | Description |
+|--------|------|-------------|
+| `id` | INTEGER PK | Auto-increment ID |
+| `deck_id` | INTEGER FK | References `decks.id` |
+| `question` | TEXT | Question text |
+| `answer` | TEXT | Answer text (markdown-formatted) |
+| `question_image` | TEXT | Base64 image for question side |
+| `answer_image` | TEXT | Base64 image for answer side |
+| `image_mime` | VARCHAR(20) | Image MIME type (image/png, image/jpeg) |
+| `image_page` | INTEGER | Page number the image came from |
+| `formula` | TEXT | LaTeX formula string |
+| `content_type` | VARCHAR(50) | text, formula, graph, diagram, chart, table, image, mixed |
+| `source_page` | INTEGER | Original page number in PDF |
+| `ease_factor` | FLOAT | SM-2 easiness factor (≥1.3, default 2.5) |
+| `review_count` | INTEGER | Total times reviewed |
+| `consecutive_correct` | INTEGER | Consecutive correct answers |
+| `interval_days` | INTEGER | Current review interval in days |
+| `next_review` | DATETIME | When the card is next due |
+| `is_mastered` | BOOLEAN | True when interval ≥ 30 days |
+| `last_reviewed` | DATETIME | Last review timestamp |
+| `created_at` | DATETIME | When the card was created |
+
+### `review_history`
+
+| Column | Type | Description |
+|--------|------|-------------|
+| `id` | INTEGER PK | Auto-increment ID |
+| `card_id` | INTEGER FK | References `flashcards.id` |
+| `rating` | VARCHAR(20) | again, hard, good, easy |
+| `ease_factor_before` | FLOAT | Ease factor before this review |
+| `ease_factor_after` | FLOAT | Ease factor after this review |
+| `interval_before` | INTEGER | Interval before this review |
+| `interval_after` | INTEGER | Interval after this review |
+| `reviewed_at` | DATETIME | When the review happened |
+
+---
+
+## ⚙️ How It Works
+
+### 1. PDF Extraction (`pdf_extractor.py`)
+
+When you upload a PDF, the backend:
+
+1. Opens the PDF with **PyMuPDF** (fitz)
+2. **Extracts text** page-by-page, detecting headings (large font sizes)
+3. **Extracts images** — skips tiny icons (<2KB), deduplicates by content hash, converts to PNG/JPEG, resizes to max 1024px, classifies as graph/diagram/chart/image
+4. **Extracts formulas** — detects math symbols, equation patterns, and math fonts; converts to LaTeX
+5. **Extracts tables** — finds tabular structures and extracts row/column data
+6. Builds a structured context with `[PAGE X]`, `[IMAGE img_pX_Y]`, `[FORMULA form_pX_Y]` markers
+
+### 2. Flashcard Generation (`gemini_client.py`)
+
+1. For documents >25 pages, splits into **25-page batches**
+2. Sends each batch to **Gemini API** with a detailed prompt
+3. The prompt instructs Gemini to generate 10-15 flashcards per 5 pages
+4. Responses are parsed from JSON with multiple fallback strategies (handles malformed LaTeX backslashes, trailing commas, etc.)
+5. Cards are validated — metadata cards (author, copyright, etc.) are filtered out
+6. Duplicate cards are deduplicated by normalized question + source page
+7. Results are merged across all batches
+
+### 3. Model Fallback
+
+The code tries multiple Gemini models in order:
+
+1. `gemini-3.5-flash` (primary)
+2. `gemini-3.5-flash-lite`
+3. `gemini-3.1-flash-lite`
+4. `gemini-3-flash-preview`
+5. `gemini-flash-lite-latest`
+6. `gemini-3.6-flash`
+7. `gemini-3.7-flash`
+
+If a model returns 404, 403, or 429, it automatically tries the next one. The first working model is cached for subsequent batches.
+
+### 4. Spaced Repetition (`review.py`)
+
+Uses a **modified SM-2 algorithm** with user-friendly intervals:
+
+| Rating | Effect |
+|--------|--------|
+| 🔴 Again | Re-show in 10 minutes, reduce ease factor |
+| 🟠 Hard | Next review in 1 day, reduce ease factor |
+| 🟢 Good | Next review in 3→7→(interval × EF) days |
+| 🔵 Easy | Next review in 7→14→(interval × EF × 1.3) days |
+
+A card is marked **mastered** when its interval reaches 30+ days.
+
+---
+
+## 🔧 Troubleshooting
+
+### "Failed to extract content" or 500 error
+
+- Make sure `PyMuPDF` and `Pillow` are installed: `pip install PyMuPDF Pillow`
+- Check the PDF is not corrupted or password-protected
+
+### Gemini API errors
+
+- **404**: Model not available — the fallback list should handle this automatically
+- **403**: Project denied access — enable "Generative Language API" in [Google Cloud Console](https://console.cloud.google.com/apis/dashboard)
+- **429**: Quota exceeded — enable billing on your Google Cloud project or wait for quota reset
+- **Connection error**: Check your internet connection and API key validity
+
+### Frontend shows "Make sure the backend is running on port 8000"
+
+- Make sure the backend is running: `python main.py`
+- Check port 8000 is not blocked by another process
+
+### Large PDF generation times out
+
+- Large PDFs (500+ pages) are processed in 25-page batches with 5-second delays between batches
+- Each batch may take 30-60 seconds depending on content
+- The request timeout is set to 300 seconds per batch
+
+### Database issues
+
+- The SQLite database (`studybuddy.db`) is auto-created on first run
+- Auto-migration adds missing columns to existing databases
+- To reset: delete `backend/studybuddy.db` and restart the backend
+
+---
+
+## 📄 License
+
+MIT
