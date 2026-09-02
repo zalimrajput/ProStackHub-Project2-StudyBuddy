@@ -4,6 +4,7 @@ from sqlalchemy.orm import Session
 from database import get_db
 from models import Deck, Flashcard, ReviewHistory
 from schemas import ReviewSubmit, ReviewResponse, ReviewSessionInfo, FlashcardOut
+from auth import get_current_user_id
 
 router = APIRouter(prefix="/api/decks/{deck_id}/review", tags=["review"])
 
@@ -95,9 +96,9 @@ def _sm2_update(card: Flashcard, rating: str) -> dict:
 # ── Endpoints ──
 
 @router.get("/session", response_model=ReviewSessionInfo)
-def get_review_session(deck_id: int, db: Session = Depends(get_db)):
+def get_review_session(deck_id: int, user_id: int = Depends(get_current_user_id), db: Session = Depends(get_db)):
     """Get all cards in a deck for review (sorted by next_review)."""
-    deck = db.query(Deck).filter(Deck.id == deck_id).first()
+    deck = db.query(Deck).filter(Deck.id == deck_id, Deck.user_id == user_id).first()
     if not deck:
         raise HTTPException(status_code=404, detail="Deck not found")
 
@@ -129,10 +130,14 @@ def get_review_session(deck_id: int, db: Session = Depends(get_db)):
 
 
 @router.post("/{card_id}", response_model=ReviewResponse)
-def submit_review(deck_id: int, card_id: int, rating: str = Form(...), db: Session = Depends(get_db)):
+def submit_review(deck_id: int, card_id: int, rating: str = Form(...), user_id: int = Depends(get_current_user_id), db: Session = Depends(get_db)):
     """Submit a review for a single card."""
     if rating not in ("again", "hard", "good", "easy"):
         raise HTTPException(status_code=422, detail="Rating must be again, hard, good, or easy")
+
+    deck = db.query(Deck).filter(Deck.id == deck_id, Deck.user_id == user_id).first()
+    if not deck:
+        raise HTTPException(status_code=404, detail="Deck not found")
 
     card = (
         db.query(Flashcard)

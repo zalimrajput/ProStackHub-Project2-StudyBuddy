@@ -3,8 +3,9 @@
 import './globals.css';
 import { Suspense } from 'react';
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import { ThemeProvider, useTheme } from '@/lib/ThemeContext';
+import { AuthProvider, useAuth } from '@/lib/AuthContext';
 
 const navLinks = [
   { href: '/', label: 'Dashboard', icon: '📊' },
@@ -29,6 +30,23 @@ function ThemeToggle() {
 
 function NavContent({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
+  const { user, logout, loading } = useAuth();
+  const router = useRouter();
+
+  // Show auth pages without nav
+  const isAuthPage = pathname === '/login' || pathname === '/signup';
+  if (isAuthPage) {
+    return (
+      <div className="min-h-screen bg-gray-50 dark:bg-slate-900 transition-colors duration-200">
+        {children}
+      </div>
+    );
+  }
+
+  const handleLogout = () => {
+    logout();
+    router.push('/login');
+  };
 
   return (
     <div className="min-h-screen flex flex-col bg-gray-50 dark:bg-slate-900 transition-colors duration-200">
@@ -70,8 +88,29 @@ function NavContent({ children }: { children: React.ReactNode }) {
               })}
             </nav>
 
-            {/* Theme Toggle */}
-            <ThemeToggle />
+            {/* Right side: user info + theme toggle */}
+            <div className="flex items-center gap-3">
+              <ThemeToggle />
+              {user && (
+                <div className="flex items-center gap-3">
+                  <div className="hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-xl bg-gray-100 dark:bg-slate-700">
+                    <div className="w-7 h-7 rounded-full bg-gradient-to-br from-brand-400 to-brand-600 flex items-center justify-center text-white text-xs font-bold">
+                      {user.username[0].toUpperCase()}
+                    </div>
+                    <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                      {user.username}
+                    </span>
+                  </div>
+                  <button
+                    onClick={handleLogout}
+                    className="px-3 py-1.5 rounded-xl text-sm font-medium text-gray-600 dark:text-gray-400 hover:text-red-600 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 transition-all"
+                    title="Logout"
+                  >
+                    🚪
+                  </button>
+                </div>
+              )}
+            </div>
           </div>
         </div>
       </header>
@@ -101,9 +140,11 @@ export default function RootLayout({
     <html lang="en" suppressHydrationWarning>
       <body>
         <ThemeProvider>
-          <Suspense fallback={<div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-slate-900"><div className="w-5 h-5 border-2 border-brand-500 border-t-transparent rounded-full animate-spin" /></div>}>
-            <NavContent>{children}</NavContent>
-          </Suspense>
+          <AuthProvider>
+            <Suspense fallback={<div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-slate-900"><div className="w-5 h-5 border-2 border-brand-500 border-t-transparent rounded-full animate-spin" /></div>}>
+              <NavContent>{children}</NavContent>
+            </Suspense>
+          </AuthProvider>
         </ThemeProvider>
       </body>
     </html>

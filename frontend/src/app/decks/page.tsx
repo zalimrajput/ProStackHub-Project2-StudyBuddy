@@ -1,13 +1,17 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { listDecks, deleteDeck } from '@/lib/api';
+import { useAuth } from '@/lib/AuthContext';
 import type { Deck } from '@/lib/types';
 
 export default function DecksPage() {
   const [decks, setDecks] = useState<Deck[]>([]);
   const [loading, setLoading] = useState(true);
+  const { user, loading: authLoading } = useAuth();
+  const router = useRouter();
 
   const load = () => {
     listDecks()
@@ -15,7 +19,13 @@ export default function DecksPage() {
       .finally(() => setLoading(false));
   };
 
-  useEffect(load, []);
+  useEffect(() => {
+    if (!authLoading && !user) {
+      router.push('/login');
+      return;
+    }
+    if (user) load();
+  }, [user, authLoading, router]);
 
   const handleDelete = async (id: number, name: string) => {
     if (!confirm(`Delete deck "${name}" and all its cards?`)) return;

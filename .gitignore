@@ -17,3 +17,9 @@ out/
 
 # Database
 *.db
+
+# Logs
+*.log
+
+# Build info
+frontend/tsconfig.tsbuildinfo

@@ -1,12 +1,20 @@
 'use client';
 
-import { Suspense, useState } from 'react';
+import { Suspense, useState, useEffect } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { generateFromText, generateFromFile } from '@/lib/api';
+import { useAuth } from '@/lib/AuthContext';
 
 function GenerateContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const { user, loading: authLoading } = useAuth();
+
+  useEffect(() => {
+    if (!authLoading && !user) {
+      router.push('/login');
+    }
+  }, [user, authLoading, router]);
   const presetDeckId = searchParams.get('deck_id');
 
   const [tab, setTab] = useState<'paste' | 'upload'>('paste');

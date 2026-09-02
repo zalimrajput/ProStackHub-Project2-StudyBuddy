@@ -1,23 +1,33 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { getStats } from '@/lib/api';
+import { useAuth } from '@/lib/AuthContext';
 import type { DashboardStats } from '@/lib/types';
 
 export default function DashboardPage() {
   const [stats, setStats] = useState<DashboardStats | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const { user, loading: authLoading } = useAuth();
+  const router = useRouter();
 
   useEffect(() => {
-    getStats()
-      .then(setStats)
-      .catch((e) => setError(e.message))
-      .finally(() => setLoading(false));
-  }, []);
+    if (!authLoading && !user) {
+      router.push('/login');
+      return;
+    }
+    if (user) {
+      getStats()
+        .then(setStats)
+        .catch((e) => setError(e.message))
+        .finally(() => setLoading(false));
+    }
+  }, [user, authLoading, router]);
 
-  if (loading) {
+  if (authLoading || loading) {
     return (
       <div className="flex items-center justify-center py-20">
         <div className="flex items-center gap-3 text-gray-400 dark:text-slate-500">
@@ -27,6 +37,8 @@ export default function DashboardPage() {
       </div>
     );
   }
+
+  if (!user) return null;
 
   if (error) {
     return (
@@ -54,7 +66,7 @@ export default function DashboardPage() {
       {/* Header */}
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-8 gap-4">
         <div>
-          <h1 className="page-title">Dashboard</h1>
+          <h1 className="page-title">Welcome back, {user.username}! 👋</h1>
           <p className="page-subtitle">Your study overview at a glance</p>
         </div>
         <Link href="/generate" className="btn-primary flex items-center gap-2">

@@ -10,8 +10,18 @@ import type {
 const BASE = '/api';
 const BACKEND_DIRECT = 'http://localhost:8000/api';
 
+function getAuthHeaders(): Record<string, string> {
+  if (typeof window === 'undefined') return {};
+  const token = localStorage.getItem('studybuddy_token');
+  return token ? { Authorization: `Bearer ${token}` } : {};
+}
+
 async function fetchJSON<T>(url: string, options?: RequestInit): Promise<T> {
-  const res = await fetch(url, options);
+  const headers = {
+    ...getAuthHeaders(),
+    ...options?.headers,
+  };
+  const res = await fetch(url, { ...options, headers });
   if (!res.ok) {
     const err = await res.json().catch(() => ({ detail: res.statusText }));
     throw new Error(err.detail || 'Request failed');

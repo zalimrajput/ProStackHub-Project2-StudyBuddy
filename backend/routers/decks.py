@@ -4,6 +4,7 @@ from sqlalchemy.orm import Session
 from database import get_db
 from models import Deck, Flashcard, ReviewHistory
 from schemas import DeckCreate, DeckUpdate, DeckOut
+from auth import get_current_user_id
 
 router = APIRouter(prefix="/api/decks", tags=["decks"])
 
@@ -28,22 +29,22 @@ def _deck_out(deck: Deck, db: Session) -> DeckOut:
 
 
 @router.get("", response_model=list[DeckOut])
-def list_decks(db: Session = Depends(get_db)):
-    decks = db.query(Deck).order_by(Deck.updated_at.desc()).all()
+def list_decks(user_id: int = Depends(get_current_user_id), db: Session = Depends(get_db)):
+    decks = db.query(Deck).filter(Deck.user_id == user_id).order_by(Deck.updated_at.desc()).all()
     return [_deck_out(d, db) for d in decks]
 
 
 @router.get("/{deck_id}", response_model=DeckOut)
-def get_deck(deck_id: int, db: Session = Depends(get_db)):
-    deck = db.query(Deck).filter(Deck.id == deck_id).first()
+def get_deck(deck_id: int, user_id: int = Depends(get_current_user_id), db: Session = Depends(get_db)):
+    deck = db.query(Deck).filter(Deck.id == deck_id, Deck.user_id == user_id).first()
     if not deck:
         raise HTTPException(status_code=404, detail="Deck not found")
     return _deck_out(deck, db)
 
 
 @router.post("", response_model=DeckOut, status_code=201)
-def create_deck(payload: DeckCreate, db: Session = Depends(get_db)):
-    deck = Deck(name=payload.name, description=payload.description)
+def create_deck(payload: DeckCreate, user_id: int = Depends(get_current_user_id), db: Session = Depends(get_db)):
+    deck = Deck(user_id=user_id, name=payload.name, description=payload.description)
     db.add(deck)
     db.commit()
     db.refresh(deck)
@@ -51,8 +52,8 @@ def create_deck(payload: DeckCreate, db: Session = Depends(get_db)):
 
 
 @router.put("/{deck_id}", response_model=DeckOut)
-def update_deck(deck_id: int, payload: DeckUpdate, db: Session = Depends(get_db)):
-    deck = db.query(Deck).filter(Deck.id == deck_id).first()
+def update_deck(deck_id: int, payload: DeckUpdate, user_id: int = Depends(get_current_user_id), db: Session = Depends(get_db)):
+    deck = db.query(Deck).filter(Deck.id == deck_id, Deck.user_id == user_id).first()
     if not deck:
         raise HTTPException(status_code=404, detail="Deck not found")
     if payload.name is not None:
@@ -66,8 +67,8 @@ def update_deck(deck_id: int, payload: DeckUpdate, db: Session = Depends(get_db)
 
 
 @router.delete("/{deck_id}", status_code=204)
-def delete_deck(deck_id: int, db: Session = Depends(get_db)):
-    deck = db.query(Deck).filter(Deck.id == deck_id).first()
+def delete_deck(deck_id: int, user_id: int = Depends(get_current_user_id), db: Session = Depends(get_db)):
+    deck = db.query(Deck).filter(Deck.id == deck_id, Deck.user_id == user_id).first()
     if not deck:
         raise HTTPException(status_code=404, detail="Deck not found")
     db.delete(deck)

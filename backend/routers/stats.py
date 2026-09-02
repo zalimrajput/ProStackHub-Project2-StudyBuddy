@@ -5,6 +5,7 @@ from sqlalchemy.orm import Session
 from database import get_db
 from models import Deck, Flashcard, ReviewHistory
 from schemas import DashboardStats, DeckOut
+from auth import get_current_user_id
 
 router = APIRouter(prefix="/api/stats", tags=["stats"])
 
@@ -28,23 +29,34 @@ def _deck_out(deck: Deck, db: Session) -> DeckOut:
 
 
 @router.get("", response_model=DashboardStats)
-def get_stats(db: Session = Depends(get_db)):
+def get_stats(user_id: int = Depends(get_current_user_id), db: Session = Depends(get_db)):
     now = datetime.now(timezone.utc)
     start_of_today = now.replace(hour=0, minute=0, second=0, microsecond=0)
 
-    total_cards = db.query(func.count(Flashcard.id)).scalar() or 0
+    # Filter by user's decks
+    user_deck_ids = db.query(Deck.id).filter(Deck.user_id == user_id).subquery()
+
+    total_cards = db.query(func.count(Flashcard.id)).filter(
+        Flashcard.deck_id.in_(user_deck_ids)
+    ).scalar() or 0
     cards_due_today = db.query(func.count(Flashcard.id)).filter(
-        Flashcard.next_review <= now
+        Flashcard.deck_id.in_(user_deck_ids),
+        Flashcard.next_review <= now,
     ).scalar() or 0
     cards_mastered = db.query(func.count(Flashcard.id)).filter(
-        Flashcard.is_mastered == True
+        Flashcard.deck_id.in_(user_deck_ids),
+        Flashcard.is_mastered == True,
     ).scalar() or 0
 
-    total_reviews_today = db.query(func.count(ReviewHistory.id)).filter(
-        ReviewHistory.reviewed_at >= start_of_today
+    # Reviews today — only for user's cards
+    total_reviews_today = db.query(func.count(ReviewHistory.id)).join(
+        Flashcard, ReviewHistory.card_id == Flashcard.id
+    ).filter(
+        Flashcard.deck_id.in_(user_deck_ids),
+        ReviewHistory.reviewed_at >= start_of_today,
     ).scalar() or 0
 
-    total_decks = db.query(func.count(Deck.id)).scalar() or 0
+    total_decks = db.query(func.count(Deck.id)).filter(Deck.user_id == user_id).scalar() or 0
 
     # Study streak: count consecutive days with at least one review
     streak = 0
@@ -52,7 +64,10 @@ def get_stats(db: Session = Depends(get_db)):
     while True:
         day_start = check_date.replace(hour=0, minute=0, second=0, microsecond=0)
         day_end = day_start + timedelta(days=1)
-        count = db.query(func.count(ReviewHistory.id)).filter(
+        count = db.query(func.count(ReviewHistory.id)).join(
+            Flashcard, ReviewHistory.card_id == Flashcard.id
+        ).filter(
+            Flashcard.deck_id.in_(user_deck_ids),
             ReviewHistory.reviewed_at >= day_start,
             ReviewHistory.reviewed_at < day_end,
         ).scalar() or 0
@@ -62,7 +77,7 @@ def get_stats(db: Session = Depends(get_db)):
         else:
             break
 
-    decks = db.query(Deck).order_by(Deck.updated_at.desc()).all()
+    decks = db.query(Deck).filter(Deck.user_id == user_id).order_by(Deck.updated_at.desc()).all()
 
     return DashboardStats(
         total_cards=total_cards,

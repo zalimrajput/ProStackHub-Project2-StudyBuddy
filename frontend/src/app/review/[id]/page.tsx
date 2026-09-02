@@ -4,6 +4,7 @@ import { useEffect, useState, useCallback, useRef } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { getReviewSession, submitReview } from '@/lib/api';
+import { useAuth } from '@/lib/AuthContext';
 import type { ReviewSession, Flashcard, ReviewResult } from '@/lib/types';
 import Formula from '@/lib/Formula';
 import FormattedText from '@/lib/FormattedText';
@@ -24,6 +25,13 @@ export default function ReviewPage() {
   const params = useParams();
   const router = useRouter();
   const deckId = Number(params.id);
+  const { user, loading: authLoading } = useAuth();
+
+  useEffect(() => {
+    if (!authLoading && !user) {
+      router.push('/login');
+    }
+  }, [user, authLoading, router]);
 
   const [session, setSession] = useState<ReviewSession | null>(null);
   const [cards, setCards] = useState<Flashcard[]>([]);

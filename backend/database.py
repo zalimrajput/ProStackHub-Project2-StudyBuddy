@@ -1,5 +1,5 @@
 import os
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, text
 from sqlalchemy.orm import sessionmaker, declarative_base
 from dotenv import load_dotenv
 
@@ -7,9 +7,13 @@ load_dotenv()
 
 DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///./studybuddy.db")
 
+# Determine if we're using PostgreSQL or SQLite
+is_postgres = DATABASE_URL.startswith("postgresql")
+
 engine = create_engine(
     DATABASE_URL,
-    connect_args={"check_same_thread": False},  # SQLite specific
+    # SQLite-specific args only when using SQLite
+    **({"connect_args": {"check_same_thread": False}} if not is_postgres else {}),
     echo=False,
 )
 
@@ -29,15 +33,35 @@ def get_db():
 
 def init_db():
     """Create all database tables and run migrations."""
-    from models import Deck, Flashcard, ReviewHistory  # noqa: F401
+    from models import User, Deck, Flashcard, ReviewHistory  # noqa: F401
     Base.metadata.create_all(bind=engine)
 
-    # Auto-migrate: add missing columns to existing tables
-    import sqlite3
-    if "sqlite" in str(engine.url):
+    if is_postgres:
+        # PostgreSQL: use ALTER TABLE IF NOT EXISTS for safe migrations
+        migrations = [
+            ("flashcards", "question_image", 'ALTER TABLE flashcards ADD COLUMN IF NOT EXISTS question_image TEXT'),
+            ("flashcards", "answer_image", 'ALTER TABLE flashcards ADD COLUMN IF NOT EXISTS answer_image TEXT'),
+            ("flashcards", "image_mime", "ALTER TABLE flashcards ADD COLUMN IF NOT EXISTS image_mime TEXT DEFAULT 'image/png'"),
+            ("flashcards", "image_page", 'ALTER TABLE flashcards ADD COLUMN IF NOT EXISTS image_page INTEGER'),
+            ("decks", "user_id", 'ALTER TABLE decks ADD COLUMN IF NOT EXISTS user_id INTEGER'),
+        ]
+        with engine.connect() as conn:
+            for table, col, sql in migrations:
+                try:
+                    conn.execute(text(sql))
+                    conn.commit()
+                    print(f"[db] Ensured column {col} on {table}")
+                except Exception as e:
+                    # Column already exists or other error — skip
+                    pass
+    else:
+        # SQLite: use PRAGMA for migrations
+        import sqlite3
         conn = engine.raw_connection()
         try:
             cursor = conn.cursor()
+
+            # Flashcard migrations
             cursor.execute("PRAGMA table_info(flashcards)")
             existing_cols = {row[1] for row in cursor.fetchall()}
 
@@ -51,6 +75,14 @@ def init_db():
                 if col not in existing_cols:
                     cursor.execute(sql)
                     print(f"[db] Added column: {col}")
+
+            # Deck user_id migration
+            cursor.execute("PRAGMA table_info(decks)")
+            deck_cols = {row[1] for row in cursor.fetchall()}
+            if "user_id" not in deck_cols:
+                cursor.execute("ALTER TABLE decks ADD COLUMN user_id INTEGER")
+                print("[db] Added column: user_id on decks")
+
             conn.commit()
         finally:
             conn.close()

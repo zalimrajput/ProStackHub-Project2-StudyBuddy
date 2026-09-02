@@ -1,9 +1,10 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { useParams } from 'next/navigation';
+import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { getDeck, listCards, deleteCard } from '@/lib/api';
+import { useAuth } from '@/lib/AuthContext';
 import type { Deck, Flashcard } from '@/lib/types';
 import Formula from '@/lib/Formula';
 import FormattedText from '@/lib/FormattedText';
@@ -11,6 +12,14 @@ import FormattedText from '@/lib/FormattedText';
 export default function DeckDetailPage() {
   const params = useParams();
   const deckId = Number(params.id);
+  const { user, loading: authLoading } = useAuth();
+  const router = useRouter();
+
+  useEffect(() => {
+    if (!authLoading && !user) {
+      router.push('/login');
+    }
+  }, [user, authLoading, router]);
 
   const [deck, setDeck] = useState<Deck | null>(null);
   const [cards, setCards] = useState<Flashcard[]>([]);

@@ -4,7 +4,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.responses import JSONResponse
 from database import init_db
-from routers import decks, cards, generate, review, stats
+from routers import auth, decks, cards, generate, review, stats
 
 MAX_BODY_SIZE = 100 * 1024 * 1024  # 100 MB
 
@@ -43,6 +43,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+app.include_router(auth.router)
 app.include_router(decks.router)
 app.include_router(cards.router)
 app.include_router(generate.router)
