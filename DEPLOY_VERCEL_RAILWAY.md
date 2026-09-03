@@ -95,8 +95,11 @@ Consequences of direct calls:
 
 1. Go to [vercel.com](https://vercel.com) → **Add New → Project** → import the
    same GitHub repo.
-2. Vercel auto-detects **Next.js**. Set the project's **Root Directory** to
-   `frontend` (if it isn't picked automatically).
+2. Set the project's **Root Directory** to `frontend`. The repo already
+   includes [`frontend/vercel.json`](frontend/vercel.json) with
+   `"framework": "nextjs"`, which forces the **Framework Preset** to Next.js
+   (overriding whatever the dashboard picked) — so `next build` is run through
+   Vercel's Next.js builder and the build output is handled automatically.
 3. **Environment Variables** (this one is **build-time**, so add it before the
    first build):
 
@@ -147,6 +150,7 @@ Railway. Keep `SECRET_KEY` stable across deploys or all users are logged out.
 | Login works locally, fails in prod | `SECRET_KEY` differs from the one that signed your local JWTs, or `DATABASE_URL` points at a different database. Keep both identical to your `backend/.env` values. |
 | PDF upload / generation fails mid-way | Check Railway logs. Direct calls have no Vercel caps, so it's usually a Gemini quota/key issue or an oversized PDF (100 MB backend limit). If you still see `socket hang up`, you're hitting an **old cached frontend build** that proxies through Vercel — redeploy the frontend. |
 | `GET /api/health` on Railway returns 404 | Railpack started with a different command than expected (or the healthcheck ran before boot finished). Confirm `railway.json` is present in `backend/` and the Root Directory is `backend`. |
+| Vercel: build succeeds but fails with `No Output Directory named "public" found` | The project's Framework Preset isn't Next.js, so after `npm run build` Vercel looks for a static `public` folder. The repo's `frontend/vercel.json` (`"framework": "nextjs"`) forces the preset — make sure the deployed commit includes it, then redeploy. If it still fails, check **Settings → General → Framework Preset** shows Next.js and **Output Directory** is empty. |
 
 ## Local test that mirrors this topology
 
