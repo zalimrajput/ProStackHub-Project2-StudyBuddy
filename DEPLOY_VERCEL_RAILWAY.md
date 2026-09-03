@@ -69,6 +69,11 @@ Consequences of direct calls:
      `uvicorn main:app --host 0.0.0.0 --port $PORT` + `/api/health` healthcheck),
      so no start command needs to be typed. Railway auto-detects it from the
      `backend` root.
+   - **Python version:** `backend/.python-version` pins **Python 3.11** (same
+     as the local Dockerfile). Without it Railpack defaults to 3.13, which has
+     no prebuilt wheels for our pinned `psycopg2-binary==2.9.9` and
+     `pydantic-core==2.16.2` — the build fails compiling them from source.
+     Alternative: set the variable `RAILPACK_PYTHON_VERSION=3.11` instead.
 3. **Variables** on the service (Railway redeploys automatically when you change
    them):
 
@@ -136,6 +141,7 @@ Railway. Keep `SECRET_KEY` stable across deploys or all users are logged out.
 |---------|-------------|
 | Browser console shows CORS errors on API calls | The Railway `CORS_ORIGINS` doesn't include your exact Vercel origin. Add `https://<app>.vercel.app` (each preview origin too) and let Railway redeploy. |
 | API calls 404/500 and hit `https://<app>.vercel.app/api/...` | `NEXT_PUBLIC_BACKEND_URL` wasn't set (or was set after the build). It's baked into the client at **build time** — set it and redeploy. If it were set, requests go straight to `*.up.railway.app`. |
+| Railway build fails on `psycopg2-binary` / `pydantic-core` (they compile from source and error) | Railpack used Python 3.13 — those pinned versions have no 3.13 wheels. Fix: `backend/.python-version` (contains `3.11`) or the `RAILPACK_PYTHON_VERSION=3.11` variable, then redeploy. |
 | Railway deploy fails or never becomes healthy | Check the deploy logs. `railway.json` in `backend/` sets the start command; if you removed it, set Settings → Start Command to `uvicorn main:app --host 0.0.0.0 --port $PORT` and the healthcheck path to `/api/health`. |
 | App works but data "resets" | `DATABASE_URL` missing/wrong on Railway → backend fell back to the ephemeral SQLite file in the container. Set it and redeploy. |
 | Login works locally, fails in prod | `SECRET_KEY` differs from the one that signed your local JWTs, or `DATABASE_URL` points at a different database. Keep both identical to your `backend/.env` values. |
