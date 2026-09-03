@@ -1,7 +1,13 @@
 /** @type {import('next').NextConfig} */
 // All API calls from the browser stay same-origin under /api and are proxied
-// here to the FastAPI backend on port 8000. That backend runs on localhost:8000
-// in local dev AND inside the same container in the production (Faable) deploy.
+// here to the FastAPI backend. The backend target is set with BACKEND_URL:
+//   - local dev / single Docker container: BACKEND_URL unset -> http://localhost:8000
+//     (uvicorn runs on localhost:8000, in the same machine or the same container)
+//   - Faable Free plan (two apps, no Docker): set BACKEND_URL to the deployed
+//     backend app's public URL, e.g. https://<backend-app>.faable.link
+// Do NOT set a trailing slash on BACKEND_URL.
+const backendUrl = process.env.BACKEND_URL || 'http://localhost:8000';
+
 const nextConfig = {
   output: 'standalone',
   experimental: {
@@ -16,7 +22,7 @@ const nextConfig = {
     return [
       {
         source: '/api/:path*',
-        destination: 'http://localhost:8000/api/:path*',
+        destination: `${backendUrl}/api/:path*`,
       },
     ];
   },

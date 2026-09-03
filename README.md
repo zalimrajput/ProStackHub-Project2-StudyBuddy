@@ -295,7 +295,7 @@ If port **3000 is already in use** (e.g. `npm run dev` is running), stop that pr
 
 ### Frontend
 
-The frontend has **no required environment variables**. Every API call (including generate and
+The frontend has **no required environment variables** (optional `BACKEND_URL` points the `/api` proxy at a deployed backend instead of `localhost:8000` — used only on the Faable Free two-app setup). Every API call (including generate and
 file uploads) stays same-origin under `/api` and is proxied to the backend via `next.config.js`
 rewrites (`/api/*` → `localhost:8000/api/*`). All API calls include the
 `Authorization: Bearer <token>` header.
@@ -304,13 +304,11 @@ rewrites (`/api/*` → `localhost:8000/api/*`). All API calls include the
 
 ## ☁️ Production Deployment (Faable)
 
-Ready to share the app live? StudyBuddy ships with a **single-container Docker setup** that runs
-the Next.js frontend and FastAPI backend together, plus a full walkthrough for deploying it to
-[Faable Deploy](https://faable.com/deploy) with a hosted PostgreSQL (Supabase) database:
+Ready to share the app live? Two ways to deploy on [Faable Deploy](https://faable.com/deploy): **free (€0)** as two buildpack apps (Next.js + FastAPI, no Docker) or on a **paid Hobby/Pro plan** as one Docker container running both. Either way:
 
-- The frontend proxies `/api/*` to the backend inside the same container — no CORS setup needed
+- The frontend proxies `/api/*` to the backend (same container in Docker, or the backend app's URL via `BACKEND_URL` on the Free path) — no CORS setup needed
 - Data lives in Supabase PostgreSQL (`DATABASE_URL`); tables auto-create on first boot
-- Set `DATABASE_URL`, `SECRET_KEY`, and `GEMINI_API_KEY` as Faable secrets
+- Set `DATABASE_URL`, `SECRET_KEY`, `GEMINI_API_KEY` (plus `BACKEND_URL` on the frontend app for the Free path) as Faable secrets
 - Push to your release branch and Faable rebuilds + redeploys automatically
 
 **See [`DEPLOY_FAABLE.md`](DEPLOY_FAABLE.md) for the complete step-by-step guide.**
