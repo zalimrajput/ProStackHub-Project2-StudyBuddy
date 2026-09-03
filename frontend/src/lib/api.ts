@@ -8,7 +8,10 @@ import type {
 } from './types';
 
 const BASE = '/api';
-const BACKEND_DIRECT = 'http://localhost:8000/api';
+// Every request (including generate/file uploads) stays same-origin under /api;
+// Next.js rewrites proxy it to the FastAPI backend (localhost:8000 in dev and
+// inside the production container). Never use a hardcoded host from the browser.
+const BACKEND_DIRECT = BASE;
 
 function getAuthHeaders(): Record<string, string> {
   if (typeof window === 'undefined') return {};

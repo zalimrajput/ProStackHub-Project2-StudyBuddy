@@ -1,0 +1,29 @@
+# VCS
+.git
+.gitignore
+
+# Environment / secrets (never ship .env files into the image)
+.env
+.env.*
+!.env.example
+
+# Node
+**/node_modules
+**/.next
+**/out
+**/*.tsbuildinfo
+
+# Python
+**/venv
+**/.venv
+**/__pycache__
+**/*.py[cod]
+
+# Databases (ephemeral SQLite files must not ship in the image)
+**/*.db
+**/*.sqlite*
+
+# Logs & OS junk
+**/*.log
+.DS_Store
+Thumbs.db

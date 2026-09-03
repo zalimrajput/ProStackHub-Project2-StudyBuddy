@@ -16,6 +16,7 @@ Every user gets their own account backed by **JWT authentication**, so decks, fl
 - [Prerequisites](#prerequisites)
 - [Getting Started](#getting-started)
 - [Environment Variables](#environment-variables)
+- [Production Deployment (Faable)](#production-deployment-faable)
 - [Starting the Application](#starting-the-application)
 - [API Endpoints](#api-endpoints)
 - [Database Schema](#database-schema)
@@ -260,9 +261,25 @@ Navigate to **http://localhost:3000** in your browser. The app redirects unauthe
 
 ### Frontend
 
-The frontend has **no required environment variables**. API requests are proxied to the backend via `next.config.js` rewrites (`/api/*` → `localhost:8000/api/*`).
+The frontend has **no required environment variables**. Every API call (including generate and
+file uploads) stays same-origin under `/api` and is proxied to the backend via `next.config.js`
+rewrites (`/api/*` → `localhost:8000/api/*`). All API calls include the
+`Authorization: Bearer <token>` header.
 
-> **Note:** The generate endpoint sends requests directly to `http://localhost:8000/api/generate/` (bypassing Next.js) because file uploads can be large and may time out through the proxy. All API calls include the `Authorization: Bearer <token>` header.
+---
+
+## ☁️ Production Deployment (Faable)
+
+Ready to share the app live? StudyBuddy ships with a **single-container Docker setup** that runs
+the Next.js frontend and FastAPI backend together, plus a full walkthrough for deploying it to
+[Faable Deploy](https://faable.com/deploy) with a hosted PostgreSQL (Supabase) database:
+
+- The frontend proxies `/api/*` to the backend inside the same container — no CORS setup needed
+- Data lives in Supabase PostgreSQL (`DATABASE_URL`); tables auto-create on first boot
+- Set `DATABASE_URL`, `SECRET_KEY`, and `GEMINI_API_KEY` as Faable secrets
+- Push to your release branch and Faable rebuilds + redeploys automatically
+
+**See [`DEPLOY_FAABLE.md`](DEPLOY_FAABLE.md) for the complete step-by-step guide.**
 
 ---
 
