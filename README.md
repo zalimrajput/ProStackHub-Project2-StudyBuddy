@@ -177,6 +177,26 @@ DATABASE_URL=sqlite:///./studybuddy.db   # or any PostgreSQL URL, e.g. Supabase
 SECRET_KEY=your_random_secret            # optional — a dev default is built in
 ```
 
+#### Optional: Use PostgreSQL instead of SQLite
+
+Out of the box StudyBuddy runs on **SQLite** — the `studybuddy.db` file and all tables (`users`, `decks`, `flashcards`, `review_history`) are created **automatically on first backend start**, so no database setup is needed. If you'd rather use PostgreSQL (e.g., a free Supabase project):
+
+1. Create a project at [supabase.com](https://supabase.com) or use any other PostgreSQL host
+2. Copy the project's connection string (SQLAlchemy/Postgres URI format, e.g. from **Project Settings → Database**):
+
+   ```
+   postgresql://postgres:[YOUR-PASSWORD]@db.[YOUR-PROJECT-REF].supabase.co:5432/postgres
+   ```
+
+3. Add it to `backend/.env` as `DATABASE_URL` (replacing the SQLite default)
+4. Start the backend — the tables are created and migrated **automatically on startup**, same as SQLite; you don't need to run any SQL
+
+Notes:
+
+- `psycopg2-binary` is already in `requirements.txt`, so no extra `pip install` is needed
+- If your password contains special characters, URL-encode them (e.g. `@` → `%40`)
+- Switching to PostgreSQL only changes where data is stored — the API and app behave identically
+
 ### 3. Frontend Setup
 
 ```bash
