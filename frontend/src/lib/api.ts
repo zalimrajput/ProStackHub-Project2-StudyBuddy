@@ -17,7 +17,13 @@ import type {
 //    proxied-request cap and ~4.5 MB request-body limit, which would kill long PDF
 //    generations and big uploads. The backend must allow this origin in its
 //    CORS_ORIGINS env var.
-const BASE = process.env.NEXT_PUBLIC_BACKEND_URL || '/api';
+
+// we will chnge this tempoery code base 
+// const BASE = process.env.NEXT_PUBLIC_BACKEND_URL || '/api';
+
+const BASE = process.env.NEXT_PUBLIC_BACKEND_URL
+  ? `${process.env.NEXT_PUBLIC_BACKEND_URL}/api`
+  : '/api';
 
 function getAuthHeaders(): Record<string, string> {
   if (typeof window === 'undefined') return {};
