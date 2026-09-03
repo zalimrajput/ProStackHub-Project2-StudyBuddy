@@ -137,6 +137,8 @@ instance is replaced, but **no data is lost** because everything lives in Supaba
 | Symptom | Cause / fix |
 |---------|-------------|
 | App deploys but data "resets" on redeploy | `DATABASE_URL` is missing or wrong, so the backend silently fell back to SQLite on the ephemeral disk. Set `DATABASE_URL` (Step 1/5) and redeploy. |
+| Signup/login works in Docker but the email isn't in the DB you check | The container only shares your data if it gets the same `DATABASE_URL`. Without it, the backend uses a throwaway SQLite file **inside** the container (wiped on `docker rm`). Run with `--env-file backend/.env` (below) so the container uses the same Supabase DB as `python main.py`. |
+| PDF upload → "socket hang up" / 500 "Internal Server Error" after ~30s | Old image: Next.js's built-in `/api` proxy kills upstream requests after 30s. Rebuild the image (`docker build -t studybuddy .`) — newer builds raise it to 10 min (`experimental.proxyTimeout`). |
 | API calls return errors / "backend not reachable" | Check the app logs: uvicorn must be listening on `:8000` and Next.js on `:$PORT`. Both are started by `docker-entrypoint.sh`. |
 | Gemini generation fails with 4xx | `GEMINI_API_KEY` missing/expired, or quota. See README → Troubleshooting. |
 | Everyone logged out after a deploy | `SECRET_KEY` changed — JWTs signed with the old key are rejected. Keep it stable. |
@@ -154,4 +156,8 @@ docker run --rm -p 3000:3000 \
   -e GEMINI_API_KEY='...' \
   studybuddy
 # open http://localhost:3000
+
+# Tip: to make the container share the SAME database and secret as local
+# `python main.py` (which reads backend/.env), pass the file instead of -e flags:
+docker run --rm -p 3000:3000 --env-file backend/.env studybuddy
 ```

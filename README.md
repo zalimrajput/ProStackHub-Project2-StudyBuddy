@@ -15,6 +15,7 @@ Every user gets their own account backed by **JWT authentication**, so decks, fl
 - [Project Structure](#project-structure)
 - [Prerequisites](#prerequisites)
 - [Getting Started](#getting-started)
+- [Run with Docker (PostgreSQL)](#run-with-docker-postgresql)
 - [Environment Variables](#environment-variables)
 - [Production Deployment (Faable)](#production-deployment-faable)
 - [Starting the Application](#starting-the-application)
@@ -246,6 +247,39 @@ The frontend starts at `http://localhost:3000`.
 ### 5. Open the App
 
 Navigate to **http://localhost:3000** in your browser. The app redirects unauthenticated visitors to `/login` — create an account at `/signup` first, or log in if you already have one.
+
+### 6. Run with Docker (PostgreSQL)
+
+Prefer a single container over two terminals? The repo ships a `Dockerfile` that runs the backend (uvicorn on `:8000`) and frontend (Next.js on `:3000`) together in one image.
+
+```bash
+# 1. Make sure Docker Desktop is running, then build the image (from the repo root)
+docker build -t studybuddy .
+
+# 2. Run it — --env-file passes backend/.env into the container, so it uses the SAME
+#    PostgreSQL (Supabase) database as `python main.py` (accounts/decks are shared)
+docker run -d --name studybuddy -p 3000:3000 --env-file backend/.env studybuddy
+```
+
+Then open **http://localhost:3000** — the same app as local dev. Useful commands:
+
+```bash
+docker logs -f studybuddy    # frontend + backend logs together
+docker stop studybuddy       # stop the container
+docker start studybuddy      # start it again (data lives in PostgreSQL, so it persists)
+docker rm -f studybuddy      # remove the container
+```
+
+> **PostgreSQL vs SQLite in Docker** — the container only uses PostgreSQL if it receives
+> `DATABASE_URL`. `--env-file backend/.env` provides it (that file already points at your
+> Supabase PostgreSQL). Run *without* it and the backend silently falls back to a throwaway
+> SQLite file inside the container: accounts you create there won't show up in your PostgreSQL
+> database and disappear when the container is removed.
+>
+> To confirm which database the container is using, check the boot logs: PostgreSQL prints
+> `[db] Ensured column …` (`ALTER TABLE … IF NOT EXISTS`), SQLite prints `[db] Added column: …`.
+
+If port **3000 is already in use** (e.g. `npm run dev` is running), stop that process or publish a different host port: `docker run -d --name studybuddy -p 3100:3000 --env-file backend/.env studybuddy` → open http://localhost:3100.
 
 ---
 
@@ -498,7 +532,7 @@ A card is marked **mastered** when its interval reaches 30+ days.
 
 - Large PDFs (500+ pages) are processed in 25-page batches with 5-second delays between batches
 - Each batch may take 30-60 seconds depending on content
-- The request timeout is set to 300 seconds per batch
+- Each Gemini call times out after 180 seconds; the Next.js `/api` proxy allows up to 10 minutes for the whole request (no more 30s cutoff)
 
 ### "401 Not authenticated" / "Invalid token"
 

@@ -9,6 +9,10 @@ set -e
 
 PORT="${PORT:-3000}"
 
+# Flush Python stdout immediately so container logs show real-time progress
+# (important for diagnosing long requests like /api/generate).
+export PYTHONUNBUFFERED=1
+
 echo "[entrypoint] Starting StudyBuddy backend (uvicorn) on :8000 ..."
 cd /app/backend
 # --timeout-keep-alive 300 keeps backend connections alive so the Next.js
