@@ -4,6 +4,8 @@
 
 StudyBuddy extracts content from PDF documents (text, images, formulas, tables) using PyMuPDF, generates flashcards via Google Gemini AI, and helps you learn through an SM-2 spaced repetition algorithm.
 
+Every user gets their own account backed by **JWT authentication**, so decks, flashcards, and study stats stay private and isolated per user.
+
 ---
 
 ## 📋 Table of Contents
@@ -24,6 +26,7 @@ StudyBuddy extracts content from PDF documents (text, images, formulas, tables) 
 
 ## ✨ Features
 
+- **User Accounts & JWT Auth** — Sign up or log in; decks, cards, and progress are isolated per user
 - **PDF Upload & Extraction** — Extracts text, images, formulas (LaTeX), tables, and headings from any PDF using PyMuPDF
 - **AI Flashcard Generation** — Sends extracted content to Gemini AI with a detailed prompt to generate high-quality Q&A flashcards
 - **Image Support** — Embeds extracted images (diagrams, graphs, charts) directly into flashcards
@@ -44,10 +47,11 @@ StudyBuddy extracts content from PDF documents (text, images, formulas, tables) 
 | Component | Technology |
 |-----------|-----------|
 | Framework | FastAPI (Python 3.11+) |
-| Database | SQLite via SQLAlchemy ORM |
+| Database | SQLite or PostgreSQL via SQLAlchemy ORM |
 | PDF Extraction | PyMuPDF (fitz) + Pillow |
 | AI Provider | Google Gemini API (REST) |
 | Validation | Pydantic v2 |
+| Auth | JWT (python-jose) + bcrypt (passlib) |
 | Server | Uvicorn with auto-reload |
 
 ### Frontend
@@ -65,12 +69,13 @@ StudyBuddy extracts content from PDF documents (text, images, formulas, tables) 
 ## 📁 Project Structure
 
 ```
-StudyBuddy/
+ProStackHub-Project2-StudyBuddy/
 ├── backend/
 │   ├── main.py              # FastAPI app, middleware, CORS, lifespan
 │   ├── database.py          # SQLAlchemy engine, session, auto-migration
-│   ├── models.py            # ORM models: Deck, Flashcard, ReviewHistory
+│   ├── models.py            # ORM models: User, Deck, Flashcard, ReviewHistory
 │   ├── schemas.py           # Pydantic request/response schemas
+│   ├── auth.py              # JWT creation/validation + bcrypt hashing
 │   ├── gemini_client.py     # Gemini API calls, prompt, model fallback
 │   ├── pdf_extractor.py     # PDF parsing: text, images, formulas, tables
 │   ├── json_fix.py          # Fix malformed JSON from Gemini (LaTeX backslashes)
@@ -80,6 +85,7 @@ StudyBuddy/
 │   ├── studybuddy.db        # SQLite database (auto-created)
 │   └── routers/
 │       ├── __init__.py
+│       ├── auth.py          # Signup / login / me endpoints
 │       ├── decks.py         # CRUD for decks
 │       ├── cards.py         # List/get/delete cards in a deck
 │       ├── generate.py      # Upload PDF/text → generate flashcards
@@ -94,9 +100,13 @@ StudyBuddy/
 │   ├── tsconfig.json
 │   └── src/
 │       ├── app/
-│       │   ├── layout.tsx       # Root layout, nav bar, theme provider
+│       │   ├── layout.tsx       # Root layout, nav bar, theme + auth providers
 │       │   ├── globals.css      # Tailwind + custom component classes
-│       │   ├── page.tsx         # Dashboard page
+│       │   ├── page.tsx         # Dashboard page (requires login)
+│       │   ├── login/
+│       │   │   └── page.tsx     # Log in with email + password
+│       │   ├── signup/
+│       │   │   └── page.tsx     # Create a new account
 │       │   ├── generate/
 │       │   │   └── page.tsx     # Upload PDF or paste text → generate
 │       │   ├── decks/
@@ -107,7 +117,8 @@ StudyBuddy/
 │       │       └── [id]/
 │       │           └── page.tsx # Review session with SM-2 rating
 │       └── lib/
-│           ├── api.ts           # API client functions
+│           ├── api.ts           # API client functions (attaches JWT)
+│           ├── AuthContext.tsx  # Auth state: login, signup, logout, token
 │           ├── types.ts         # TypeScript interfaces
 │           ├── ThemeContext.tsx  # Dark/light mode context
 │           ├── Formula.tsx      # KaTeX formula renderer
@@ -133,8 +144,8 @@ StudyBuddy/
 ### 1. Clone the repository
 
 ```bash
-git clone <repository-url>
-cd StudyBuddy
+git clone https://github.com/zalimrajput/ProStackHub-Project2-StudyBuddy.git
+cd ProStackHub-Project2-StudyBuddy
 ```
 
 ### 2. Backend Setup
@@ -162,7 +173,8 @@ Edit `backend/.env` and add your Gemini API key:
 
 ```
 GEMINI_API_KEY=your_api_key_here
-DATABASE_URL=sqlite:///./studybuddy.db
+DATABASE_URL=sqlite:///./studybuddy.db   # or any PostgreSQL URL, e.g. Supabase
+SECRET_KEY=your_random_secret            # optional — a dev default is built in
 ```
 
 ### 3. Frontend Setup
@@ -212,7 +224,7 @@ The frontend starts at `http://localhost:3000`.
 
 ### 5. Open the App
 
-Navigate to **http://localhost:3000** in your browser.
+Navigate to **http://localhost:3000** in your browser. The app redirects unauthenticated visitors to `/login` — create an account at `/signup` first, or log in if you already have one.
 
 ---
 
@@ -223,17 +235,28 @@ Navigate to **http://localhost:3000** in your browser.
 | Variable | Required | Default | Description |
 |----------|----------|---------|-------------|
 | `GEMINI_API_KEY` | **Yes** | — | Google Gemini API key |
-| `DATABASE_URL` | No | `sqlite:///./studybuddy.db` | Database connection string |
+| `DATABASE_URL` | No | `sqlite:///./studybuddy.db` | Database connection string (SQLite or PostgreSQL — see `backend/.env.example` for a Supabase template) |
+| `SECRET_KEY` | No | dev fallback | Secret used to sign JWTs; set a strong random value in production |
 
 ### Frontend
 
 The frontend has **no required environment variables**. API requests are proxied to the backend via `next.config.js` rewrites (`/api/*` → `localhost:8000/api/*`).
 
-> **Note:** The generate endpoint sends requests directly to `http://localhost:8000/api/generate/` (bypassing Next.js) because file uploads can be large and may time out through the proxy.
+> **Note:** The generate endpoint sends requests directly to `http://localhost:8000/api/generate/` (bypassing Next.js) because file uploads can be large and may time out through the proxy. All API calls include the `Authorization: Bearer <token>` header.
 
 ---
 
 ## 📡 API Endpoints
+
+> All endpoints except `/api/health` and `/api/auth/*` require an `Authorization: Bearer <access_token>` header (the token returned by login/signup). Decks, cards, and stats are scoped to the authenticated user.
+
+### Auth
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| `POST` | `/api/auth/signup` | Create account `{email, username, password}` → `{access_token, user}` |
+| `POST` | `/api/auth/login` | Log in `{email, password}` → `{access_token, user}` |
+| `GET` | `/api/auth/me` | Get the current user from the token |
 
 ### Health Check
 
@@ -276,7 +299,7 @@ Content-Type: multipart/form-data
 
 | Field | Type | Description |
 |-------|------|-------------|
-| `file` | File | PDF, TXT, or DOCX file upload |
+| `file` | File | PDF, TXT, DOC, or DOCX file upload |
 | `text_content` | String | Or paste text directly |
 | `deck_name` | String | Optional: name for new deck |
 | `deck_id` | Number | Optional: add cards to existing deck |
@@ -296,11 +319,22 @@ Rating field (form data): `rating` = `again` | `hard` | `good` | `easy`
 
 ## 🗄 Database Schema
 
+### `users`
+
+| Column | Type | Description |
+|--------|------|-------------|
+| `id` | INTEGER PK | Auto-increment ID |
+| `email` | VARCHAR(255) | Unique email used to log in |
+| `username` | VARCHAR(100) | Unique display name |
+| `hashed_password` | VARCHAR(255) | bcrypt password hash |
+| `created_at` | DATETIME | UTC creation time |
+
 ### `decks`
 
 | Column | Type | Description |
 |--------|------|-------------|
 | `id` | INTEGER PK | Auto-increment ID |
+| `user_id` | INTEGER FK | References `users.id` — the owner of the deck |
 | `name` | VARCHAR(200) | Deck name |
 | `description` | TEXT | Deck description |
 | `created_at` | DATETIME | UTC creation time |
@@ -346,6 +380,13 @@ Rating field (form data): `rating` = `again` | `hard` | `good` | `easy`
 ---
 
 ## ⚙️ How It Works
+
+### 0. Accounts & Authentication (`auth.py`, `routers/auth.py`)
+
+1. Users sign up with email, username, and password — the password is hashed with **bcrypt** before storing
+2. On login, the backend returns a **JWT** signed with `SECRET_KEY` (valid for 7 days)
+3. The frontend stores the token in `localStorage` (`studybuddy_token`) and sends it as `Authorization: Bearer <token>` on every API call
+4. Every deck/card/review/generate/stats route resolves the user from the token, so users only ever see their own data
 
 ### 1. PDF Extraction (`pdf_extractor.py`)
 
@@ -421,6 +462,12 @@ A card is marked **mastered** when its interval reaches 30+ days.
 - Large PDFs (500+ pages) are processed in 25-page batches with 5-second delays between batches
 - Each batch may take 30-60 seconds depending on content
 - The request timeout is set to 300 seconds per batch
+
+### "401 Not authenticated" / "Invalid token"
+
+- The JWT expires after 7 days — log in again at `/login`
+- Make sure API requests include the `Authorization: Bearer <token>` header
+- If you just deployed fresh, clear old tokens from `localStorage` and log in again
 
 ### Database issues
 
