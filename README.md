@@ -292,26 +292,38 @@ If port **3000 is already in use** (e.g. `npm run dev` is running), stop that pr
 | `GEMINI_API_KEY` | **Yes** | — | Google Gemini API key |
 | `DATABASE_URL` | No | `sqlite:///./studybuddy.db` | Database connection string (SQLite or PostgreSQL — see `backend/.env.example` for a Supabase template) |
 | `SECRET_KEY` | No | dev fallback | Secret used to sign JWTs; set a strong random value in production |
+| `CORS_ORIGINS` | No | localhost only | Comma-separated browser origins allowed to call the API directly (set your Vercel URL in production, e.g. `https://<app>.vercel.app`) |
 
 ### Frontend
 
-The frontend has **no required environment variables** (optional `BACKEND_URL` points the `/api` proxy at a deployed backend instead of `localhost:8000` — used only on the Faable Free two-app setup). Every API call (including generate and
-file uploads) stays same-origin under `/api` and is proxied to the backend via `next.config.js`
-rewrites (`/api/*` → `localhost:8000/api/*`). All API calls include the
+The frontend needs **no env vars for local dev** — API calls stay same-origin under `/api` and
+`next.config.js` rewrites proxy them to the backend on `localhost:8000`. In **production
+(Vercel + Railway)**, set `NEXT_PUBLIC_BACKEND_URL` at build time to the Railway backend's URL
+(e.g. `https://<service>.up.railway.app`, no trailing slash) so the **browser calls the backend
+directly** — required because Vercel caps proxied requests at 120 s and ~4.5 MB request bodies,
+while flashcard generation runs for minutes and uploads PDFs. All API calls include the
 `Authorization: Bearer <token>` header.
 
 ---
 
-## ☁️ Production Deployment (Faable)
+## ☁️ Production Deployment (Vercel + Railway)
 
-Ready to share the app live? Two ways to deploy on [Faable Deploy](https://faable.com/deploy): **free (€0)** as two buildpack apps (Next.js + FastAPI, no Docker) or on a **paid Hobby/Pro plan** as one Docker container running both. Either way:
+Ready to share the app live? The recommended setup is **Vercel for the frontend (free Hobby
+plan) and Railway for the backend (Hobby, usage-based ~$5/mo)**:
 
-- The frontend proxies `/api/*` to the backend (same container in Docker, or the backend app's URL via `BACKEND_URL` on the Free path) — no CORS setup needed
+- **Vercel** serves the Next.js app (`frontend/` folder, auto-detected); the browser calls the
+  Railway backend **directly** via `NEXT_PUBLIC_BACKEND_URL` (set at build time) — API calls
+  never go through Vercel, so its 120 s proxied-request cap and ~4.5 MB request-body limit
+  can't break long PDF generations
+- **Railway** runs the FastAPI backend (`backend/` folder; the included `backend/railway.json`
+  sets the Railpack build, the `uvicorn ... --port $PORT` start command and the `/api/health`
+  healthcheck); env vars: `DATABASE_URL`, `SECRET_KEY`, `GEMINI_API_KEY`, plus `CORS_ORIGINS`
+  set to your Vercel origin (e.g. `https://<app>.vercel.app`)
 - Data lives in Supabase PostgreSQL (`DATABASE_URL`); tables auto-create on first boot
-- Set `DATABASE_URL`, `SECRET_KEY`, `GEMINI_API_KEY` (plus `BACKEND_URL` on the frontend app for the Free path) as Faable secrets
-- Push to your release branch and Faable rebuilds + redeploys automatically
+- Push to `main` and both platforms redeploy automatically
 
-**See [`DEPLOY_FAABLE.md`](DEPLOY_FAABLE.md) for the complete step-by-step guide.**
+**See [`DEPLOY_VERCEL_RAILWAY.md`](DEPLOY_VERCEL_RAILWAY.md) for the complete step-by-step
+guide.** (An older Faable guide is preserved at [`DEPLOY_FAABLE.md`](DEPLOY_FAABLE.md).)
 
 ---
 

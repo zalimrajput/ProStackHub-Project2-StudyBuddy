@@ -1,5 +1,9 @@
 # ☁️ Deploying StudyBuddy to Faable (production)
 
+> **Note: superseded** — the recommended deployment is now **Vercel (frontend) +
+> Railway (backend)**; see [`DEPLOY_VERCEL_RAILWAY.md`](DEPLOY_VERCEL_RAILWAY.md).
+> This guide is kept for reference.
+
 There are **two ways** to put StudyBuddy live on [Faable Deploy](https://faable.com/deploy) — they
 differ in cost and structure:
 

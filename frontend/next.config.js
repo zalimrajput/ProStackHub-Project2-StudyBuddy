@@ -1,12 +1,18 @@
 /** @type {import('next').NextConfig} */
-// All API calls from the browser stay same-origin under /api and are proxied
-// here to the FastAPI backend. The backend target is set with BACKEND_URL:
-//   - local dev / single Docker container: BACKEND_URL unset -> http://localhost:8000
-//     (uvicorn runs on localhost:8000, in the same machine or the same container)
-//   - Faable Free plan (two apps, no Docker): set BACKEND_URL to the deployed
-//     backend app's public URL, e.g. https://<backend-app>.faable.link
-// Do NOT set a trailing slash on BACKEND_URL.
-const backendUrl = process.env.BACKEND_URL || 'http://localhost:8000';
+// This /api rewrite proxies same-origin /api/* calls to the FastAPI backend.
+// It is used in LOCAL DEV and in the single Docker container, where the browser
+// stays on the app origin and the backend is at localhost:8000.
+//
+// Production (Vercel frontend + Railway backend) does NOT use this proxy: the
+// browser calls the Railway backend directly (see frontend/src/lib/api.ts, which
+// reads NEXT_PUBLIC_BACKEND_URL at build time) so requests never hit Vercel's
+// proxied-request timeout / request-body limits. BACKEND_URL remains a server-side
+// override if you ever want to re-enable proxying.
+// Do NOT set a trailing slash on the URL.
+const backendUrl =
+  process.env.BACKEND_URL ||
+  process.env.NEXT_PUBLIC_BACKEND_URL ||
+  'http://localhost:8000';
 
 const nextConfig = {
   output: 'standalone',

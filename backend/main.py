@@ -1,3 +1,4 @@
+import os
 from contextlib import asynccontextmanager
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
@@ -52,10 +53,23 @@ app = FastAPI(
 
 app.add_middleware(CloseConnectionMiddleware)
 app.add_middleware(RequestBodySizeLimitMiddleware)
+
+# CORS: local dev origins (localhost:3000) are always allowed. In production
+# (Vercel frontend calling this Railway backend directly from the browser) set
+# CORS_ORIGINS to a comma-separated list of the frontend's origins, e.g.
+#   CORS_ORIGINS=https://studybuddy.vercel.app
+# Or set it to * to allow any origin (fine if you accept open browser access —
+# the API is still protected by JWT auth).
+configured_origins = [
+    o.strip() for o in os.getenv("CORS_ORIGINS", "").split(",") if o.strip()
+]
+allow_all_origins = "*" in configured_origins
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000", "http://127.0.0.1:3000"],
-    allow_credentials=True,
+    allow_origins=["*"]
+    if allow_all_origins
+    else ["http://localhost:3000", "http://127.0.0.1:3000"] + configured_origins,
+    allow_credentials=not allow_all_origins,
     allow_methods=["*"],
     allow_headers=["*"],
 )

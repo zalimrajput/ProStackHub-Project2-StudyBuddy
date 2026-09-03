@@ -7,11 +7,17 @@ import type {
   ReviewResult,
 } from './types';
 
-const BASE = '/api';
-// Every request (including generate/file uploads) stays same-origin under /api;
-// Next.js rewrites proxy it to the FastAPI backend (localhost:8000 in dev and
-// inside the production container). Never use a hardcoded host from the browser.
-const BACKEND_DIRECT = BASE;
+// Where API calls go:
+//  - Local dev & the single Docker container: NEXT_PUBLIC_BACKEND_URL is unset, so
+//    BASE stays '/api' (same-origin) and next.config.js rewrites proxy /api/* to
+//    the FastAPI backend on localhost:8000.
+//  - Production (Vercel frontend + Railway backend): NEXT_PUBLIC_BACKEND_URL is set
+//    at build time (inlined into the client bundle) to the Railway backend's public
+//    URL, so the browser calls the backend DIRECTLY. This avoids Vercel's 120s
+//    proxied-request cap and ~4.5 MB request-body limit, which would kill long PDF
+//    generations and big uploads. The backend must allow this origin in its
+//    CORS_ORIGINS env var.
+const BASE = process.env.NEXT_PUBLIC_BACKEND_URL || '/api';
 
 function getAuthHeaders(): Record<string, string> {
   if (typeof window === 'undefined') return {};
@@ -83,7 +89,7 @@ export async function generateFromText(
   if (deckId) formData.append('deck_id', String(deckId));
   if (deckName) formData.append('deck_name', deckName);
 
-  return fetchJSON(`${BACKEND_DIRECT}/generate/`, {
+  return fetchJSON(`${BASE}/generate/`, {
     method: 'POST',
     body: formData,
   });
@@ -99,7 +105,7 @@ export async function generateFromFile(
   if (deckId) formData.append('deck_id', String(deckId));
   if (deckName) formData.append('deck_name', deckName);
 
-  return fetchJSON(`${BACKEND_DIRECT}/generate/`, {
+  return fetchJSON(`${BASE}/generate/`, {
     method: 'POST',
     body: formData,
   });
