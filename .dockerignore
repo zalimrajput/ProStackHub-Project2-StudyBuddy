@@ -3,9 +3,8 @@
 .gitignore
 
 # Environment / secrets (never ship .env files into the image)
-.env
-.env.*
-!.env.example
+**/.env
+**/.env.*
 
 # Node
 **/node_modules

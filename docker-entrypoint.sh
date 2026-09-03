@@ -11,7 +11,10 @@ PORT="${PORT:-3000}"
 
 echo "[entrypoint] Starting StudyBuddy backend (uvicorn) on :8000 ..."
 cd /app/backend
-/opt/venv/bin/python -m uvicorn main:app --host 0.0.0.0 --port 8000 &
+# --timeout-keep-alive 300 keeps backend connections alive so the Next.js
+# /api proxy never picks up a stale socket (uvicorn's 5s default caused
+# 'socket hang up' / ECONNRESET on requests arriving after a pause).
+/opt/venv/bin/python -m uvicorn main:app --host 0.0.0.0 --port 8000 --timeout-keep-alive 300 &
 BACKEND_PID=$!
 
 echo "[entrypoint] Starting StudyBuddy frontend (Next.js standalone) on :${PORT} ..."
