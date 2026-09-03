@@ -107,13 +107,21 @@ You create **two projects → two apps** from the same repo. Free gives **1 free
 project**, so putting each app in its own project keeps the whole stack at **€0**. (Two apps in one
 project would bill the second instance.)
 
+> **Why isn't there a `faable.json` in this repo?** Faable reads only **one** `faable.json` — at
+> the **repository root** — and files inside `frontend/` or `backend/` are ignored. A single root
+> file can only point at one app (`rootDir`), so when **two apps share one repository** the Root
+> Directory is set **per app on the platform** (app settings), which takes precedence over any
+> `faable.json`. No in-repo config is needed: pointing each app at its folder makes Faable
+> auto-detect the stack (`frontend` → Next.js, `backend` → FastAPI) and generate the start command
+> itself.
+
 ## A1. Backend app (FastAPI) — deploy first
 
 1. Faable Dashboard → create **Project** `studybuddy-api` (starts on Free) → create an **App**.
 2. **Link repository**: `zalimrajput/ProStackHub-Project2-StudyBuddy`.
-3. **Root Directory**: `backend` — the Python buildpack then finds `requirements.txt` and
-   `main.py` (`app = FastAPI(...)`) and runs `uvicorn main:app --host 0.0.0.0 --port $PORT`
-   automatically. No start command to write.
+3. In the app's **Settings**, set the **Root Directory** to `backend` — the Python buildpack then
+   finds `requirements.txt` and `main.py` (`app = FastAPI(...)`) and runs
+   `uvicorn main:app --host 0.0.0.0 --port $PORT` automatically. No start command to write.
 4. **Environment/secrets** on this app:
    | Variable | Value |
    |----------|-------|
@@ -127,8 +135,9 @@ project would bill the second instance.)
 
 1. Create **Project** `studybuddy-web` (Free) → create an **App**.
 2. **Link the same repository**.
-3. **Root Directory**: `frontend` — the builder detects Next.js, runs `npm run build`, and serves
-   with `next start` (standalone output is applied automatically).
+3. In the app's **Settings**, set the **Root Directory** to `frontend` — the builder detects
+   Next.js, runs `npm run build`, and serves with `next start` (standalone output is applied
+   automatically).
 4. **Environment/secrets** on this app:
    | Variable | Value |
    |----------|-------|
@@ -143,11 +152,15 @@ project would bill the second instance.)
    - Persistence check: create a deck, redeploy the backend, confirm the deck is still there (it
      lives in Supabase).
 
-> CLI equivalent for the secrets, run once per app after `faable login`:
+> CLI equivalent — after `faable login`, set each app's secrets (the app is picked interactively):
 > ```bash
 > faable deploy secrets set DATABASE_URL='postgresql://...' SECRET_KEY='...' GEMINI_API_KEY='...'
 > faable deploy secrets set BACKEND_URL='https://<backend-app>.faable.link'
 > ```
+>
+> Deploying from the CLI: because **two apps share this repository**, pass the app id explicitly —
+> `faable deploy <app_id>` (list ids with `faable deploy list`). The Root Directory itself stays a
+> dashboard/app-settings value; it can't be declared in a repo file for this setup.
 
 ---
 
