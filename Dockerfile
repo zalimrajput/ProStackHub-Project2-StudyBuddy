@@ -14,6 +14,11 @@ WORKDIR /build/frontend
 COPY frontend/package.json frontend/package-lock.json ./
 RUN npm ci
 COPY frontend/ ./
+# Standalone output is only produced when NEXT_STANDALONE=1. It is enabled
+# here because this image runs the Next.js standalone server (docker-entrypoint
+# starts .next/standalone/server.js). Vercel builds do not set it and get the
+# default output instead.
+ENV NEXT_STANDALONE=1
 RUN npm run build
 
 # ── Stage 2: build the Python backend virtualenv ────────────────────────────

@@ -14,8 +14,14 @@ const backendUrl =
   process.env.NEXT_PUBLIC_BACKEND_URL ||
   'http://localhost:8000';
 
+// 'standalone' output is only needed for the self-hosted Docker image (the
+// Dockerfile copies .next/standalone/). Vercel does NOT need it: Vercel traces
+// and bundles the app itself, and running standalone file-tracing on Vercel's
+// build machine made the build die silently at 'Collecting build traces'.
+// The Docker build sets NEXT_STANDALONE=1 (see Dockerfile); Vercel leaves it
+// unset, so output falls back to Vercel's native build.
 const nextConfig = {
-  output: 'standalone',
+  output: process.env.NEXT_STANDALONE === '1' ? 'standalone' : undefined,
   experimental: {
     // Next.js's built-in /api proxy kills upstream requests after 30s by
     // default. Flashcard generation (/api/generate) legitimately takes longer:
