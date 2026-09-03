@@ -52,7 +52,7 @@ Every user gets their own account backed by **JWT authentication**, so decks, fl
 | PDF Extraction | PyMuPDF (fitz) + Pillow |
 | AI Provider | Google Gemini API (REST) |
 | Validation | Pydantic v2 |
-| Auth | JWT (python-jose) + bcrypt (passlib) |
+| Auth | JWT (python-jose) + bcrypt |
 | Server | Uvicorn with auto-reload |
 
 ### Frontend

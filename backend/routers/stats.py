@@ -1,6 +1,6 @@
 from datetime import datetime, timezone, timedelta
 from fastapi import APIRouter, Depends
-from sqlalchemy import func
+from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 from database import get_db
 from models import Deck, Flashcard, ReviewHistory
@@ -33,8 +33,9 @@ def get_stats(user_id: int = Depends(get_current_user_id), db: Session = Depends
     now = datetime.now(timezone.utc)
     start_of_today = now.replace(hour=0, minute=0, second=0, microsecond=0)
 
-    # Filter by user's decks
-    user_deck_ids = db.query(Deck.id).filter(Deck.user_id == user_id).subquery()
+    # Filter by user's decks — pass a select() to .in_() (SQLAlchemy 2.0 style,
+    # avoids the deprecated subquery-coercion warning)
+    user_deck_ids = select(Deck.id).where(Deck.user_id == user_id)
 
     total_cards = db.query(func.count(Flashcard.id)).filter(
         Flashcard.deck_id.in_(user_deck_ids)
