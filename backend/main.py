@@ -26,6 +26,22 @@ class RequestBodySizeLimitMiddleware(BaseHTTPMiddleware):
         return await call_next(request)
 
 
+class CloseConnectionMiddleware(BaseHTTPMiddleware):
+    """Tell clients not to keep the connection alive.
+
+    The Next.js /api proxy pools keep-alive sockets to this backend and can
+    reuse one that uvicorn already closed after its keep-alive timeout,
+    which surfaces as 'socket hang up' / ECONNRESET on proxied requests
+    (e.g. /api/generate). Closing each connection prevents stale-socket reuse
+    entirely — every request gets a fresh connection.
+    """
+
+    async def dispatch(self, request: Request, call_next):
+        response = await call_next(request)
+        response.headers["connection"] = "close"
+        return response
+
+
 app = FastAPI(
     title="StudyBuddy API",
     description="AI-powered flashcard generation with spaced repetition",
@@ -34,6 +50,7 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
+app.add_middleware(CloseConnectionMiddleware)
 app.add_middleware(RequestBodySizeLimitMiddleware)
 app.add_middleware(
     CORSMiddleware,
