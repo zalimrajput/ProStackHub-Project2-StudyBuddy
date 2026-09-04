@@ -8,8 +8,25 @@ Every user gets their own account backed by **JWT authentication**, so decks, fl
 
 ---
 
+## 🌐 Live Deployment
+
+StudyBuddy is deployed and running in production:
+
+| Part | URL |
+|------|-----|
+| **Frontend app** (Vercel) | https://pro-stack-hub-project2-study-buddy-gamma.vercel.app |
+| **Backend API** (Railway) | https://prostackhub-project2-studybuddy-production.up.railway.app |
+| **Backend health check** | https://prostackhub-project2-studybuddy-production.up.railway.app/api/health |
+
+Open the frontend URL, create an account at **Sign up**, and start generating
+flashcards from PDFs or pasted text. All routes except signup/login require a
+logged-in account.
+
+---
+
 ## 📋 Table of Contents
 
+- [Live Deployment](#live-deployment)
 - [Features](#features)
 - [Tech Stack](#tech-stack)
 - [Project Structure](#project-structure)
@@ -321,6 +338,11 @@ plan) and Railway for the backend (Hobby, usage-based ~$5/mo)**:
   set to your Vercel origin (e.g. `https://<app>.vercel.app`)
 - Data lives in Supabase PostgreSQL (`DATABASE_URL`); tables auto-create on first boot
 - Push to `main` and both platforms redeploy automatically
+
+The live deployment of **this repo** is at:
+
+- **Frontend:** https://pro-stack-hub-project2-study-buddy-gamma.vercel.app
+- **Backend:** https://prostackhub-project2-studybuddy-production.up.railway.app (health check: `/api/health`)
 
 **See [`DEPLOY_VERCEL_RAILWAY.md`](DEPLOY_VERCEL_RAILWAY.md) for the complete step-by-step
 guide.** (An older Faable guide is preserved at [`DEPLOY_FAABLE.md`](DEPLOY_FAABLE.md).)
